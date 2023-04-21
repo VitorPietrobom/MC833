@@ -1,0 +1,6 @@
+.vscode
+*.o
+client
+server
+perfis.json
+*.ghc

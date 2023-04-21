@@ -3,4 +3,4 @@
 client
 server
 perfis.json
-*.gch
+cJSON.h.gch

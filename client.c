@@ -9,7 +9,7 @@
 #define PORT 8080
 
 
-char* formatJson() {
+char* Cadastrar_Perfil() {
     // Array de labels dos campos
     char *fields[] = {"email", "nome", "sobrenome", "cidade", "formação", "ano de formatura", "habilidades"};
 
@@ -18,12 +18,11 @@ char* formatJson() {
 
     // Loop para preencher o objeto JSON
     for (int i = 0; i < 7; i++) {
-        char input[100];
+        char inputPerfil[100];
         printf("Digite o %s: ", fields[i]);
-        // a scanf that reads until the enter key is pressed
-        scanf("%[^\n]%*c", &input);
+        scanf("%[^\n]%*c", &inputPerfil);
         //input[strcspn(input, "\n")] = 0;  // Remove o caractere de nova linha do final da entrada
-        cJSON_AddStringToObject(root, fields[i], input);
+        cJSON_AddStringToObject(root, fields[i], inputPerfil);
     }
 
     // Converte o objeto JSON para uma string formatada
@@ -38,8 +37,18 @@ int main(int argc, char const *argv[]) {
     struct sockaddr_in serv_addr;
     char *hello = "Hello from client";
     char buffer[1024] = {0};
+    char input[100];
 
-    char* profile = formatJson();
+    printf("Que operação gostaria de realizar?\n");
+    printf("1. Cadastrar perfil\n");
+    printf("2. Buscar perfil\n");
+    printf("3. Listar perfis\n");
+    printf("4. Deletar perfil\n");
+    printf("5. Sair\n");
+
+    scanf("%[^\n]%*c", &input);
+
+    
 
     // Create socket file descriptor
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -63,8 +72,30 @@ int main(int argc, char const *argv[]) {
         return -1;
     }
 
-    // Send message to server
-    send(sock, profile, strlen(profile), 0);
+    // Switch that calls the function according to the user's input
+    switch (atoi(input))
+    {
+    case 1:
+    {
+        char* profile = Cadastrar_Perfil();
+        // Send message to server
+        send(sock, profile, strlen(profile), 0);
+        break;
+    }
+        
+    
+    case 2:
+        break;
+
+    case 3:
+        break;
+    
+    case 4:
+        break;
+    
+    case 5:
+        break;
+    }
 
     // Read data from server
     valread = recv(sock, buffer, 1024, 0);

@@ -13,6 +13,7 @@
 
 // FINALIZADA - FUNCIONANDO  - NÃO ALTERAR
 void registrarPerfil(char* nomeArquivo, char* perfilString) {
+    printf("%s\n", perfilString);
     // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
     FILE* arquivoJSON;
     cJSON* raiz;
@@ -53,28 +54,29 @@ void registrarPerfil(char* nomeArquivo, char* perfilString) {
     cJSON_Delete(raiz);
 }
 
-void* handleClient(void* arg) {
-    int client_socket = *(int*)arg;
-
-    int read_size;    
-    char buffer[1024];
-    while (1) {
-        bzero(buffer, 1024);
-        read_size = recv(client_socket, buffer, sizeof(buffer),0);
-        registrarPerfil("perfis.json", buffer);
-    }
-}
-
-int main(int argc, char const *argv[]) {
-    int server_fd, new_socket, valread;
-    struct sockaddr_in address;
-    int opt = 1;
-    int addrlen = sizeof(address);
+void *handle_connection(void *arg) {
+    int new_socket = *(int*)arg;
     char buffer[1024] = {0};
     char *hello = "Hello from server";
 
-    //registrarPerfil("perfis.json", "penis@meu.bola.esquerda", "Boris o Amendoim", "Amendoim", "Gramado serrano", "Mestrado em Amendoim", 2020, "Fazer amendoim e comer amendoim");
-    
+    // Read data from client
+    int valread = recv(new_socket, buffer, 1024, 0);
+    registrarPerfil("perfis.json", buffer);
+
+    // Send message to client
+    send(new_socket, hello, strlen(hello), 0);
+
+    // Close socket
+    close(new_socket);
+
+    // Exit thread
+    pthread_exit(NULL);
+}
+
+int main(int argc, char const *argv[]) {
+    int server_fd, new_socket, opt = 1;
+    struct sockaddr_in address;
+    int addrlen = sizeof(address);
 
     // Create socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -105,32 +107,23 @@ int main(int argc, char const *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    int client_socket;
-
     while (1) {
-        client_socket = accept(server_fd, NULL, NULL);
-        printf("client accepted\n");
-        pthread_t tid; // precisa de thread pra atender em simultaneo
-        pthread_create(&tid, NULL, handleClient, (void*)&client_socket);
-        pthread_detach(tid);
+        // Accept incoming connection
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
+            perror("accept");
+            exit(EXIT_FAILURE);
+        }
+
+        // Create new thread to handle connection
+        pthread_t thread;
+        if (pthread_create(&thread, NULL, handle_connection, &new_socket) != 0) {
+            perror("pthread_create");
+            exit(EXIT_FAILURE);
+        }
+
+        // Detach thread to free resources when it exits
+        pthread_detach(thread);
     }
-
-    close(client_socket);
-
-    // // Accept incoming connection
-    // if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-    //     perror("accept");
-    //     exit(EXIT_FAILURE);
-    // }
-
-    // Read data from client
-    // valread = recv(new_socket, buffer, 1024, 0);
-    // registrarPerfil("perfis.json", buffer);
-    //printf("Return of valread: %d\n",valread);
-    //printf("Input: %s\n",buffer);
-
-    // // Send message to client
-    // send(new_socket, hello, strlen(hello), 0);
 
     return 0;
 }

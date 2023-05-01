@@ -10,27 +10,29 @@
 
 #define PORT 8080
 
-
+void openFile(char* nomeArquivo, FILE** arquivoJSON, cJSON** raiz) {
+    if ((*arquivoJSON = fopen(nomeArquivo, "rb")) == NULL) {
+        // Criar um novo objeto JSON vazio se o arquivo não existir
+        *raiz = cJSON_CreateObject();
+    } else {
+        // Carregar o objeto JSON existente do arquivo
+        fseek(*arquivoJSON, 0, SEEK_END);
+        long tamanhoArquivo = ftell(*arquivoJSON);
+        rewind(*arquivoJSON);
+        char* conteudoArquivo = malloc(tamanhoArquivo + 1);
+        fread(conteudoArquivo, 1, tamanhoArquivo, *arquivoJSON);
+        fclose(*arquivoJSON);
+        *raiz = cJSON_Parse(conteudoArquivo);
+        free(conteudoArquivo);
+    }
+}
 
 // FINALIZADA - FUNCIONANDO  - NÃO ALTERAR
 void registrarPerfil(char* nomeArquivo, char* perfilString) {
     // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
     FILE* arquivoJSON;
     cJSON* raiz;
-    if ((arquivoJSON = fopen(nomeArquivo, "rb")) == NULL) {
-        // Criar um novo objeto JSON vazio se o arquivo não existir
-        raiz = cJSON_CreateObject();
-    } else {
-        // Carregar o objeto JSON existente do arquivo
-        fseek(arquivoJSON, 0, SEEK_END);
-        long tamanhoArquivo = ftell(arquivoJSON);
-        rewind(arquivoJSON);
-        char* conteudoArquivo = malloc(tamanhoArquivo + 1);
-        fread(conteudoArquivo, 1, tamanhoArquivo, arquivoJSON);
-        fclose(arquivoJSON);
-        raiz = cJSON_Parse(conteudoArquivo);
-        free(conteudoArquivo);
-    }
+    openFile(nomeArquivo, &arquivoJSON, &raiz);
 
     // Criar um novo objeto JSON para o perfil e adicioná-lo à matriz "perfis"
     cJSON* jsonRequest = cJSON_Parse(perfilString);
@@ -55,6 +57,44 @@ void registrarPerfil(char* nomeArquivo, char* perfilString) {
     cJSON_Delete(raiz);
 }
 
+void removerPerfil(char* nomeArquivo, char* stringRequest) {
+    // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
+    FILE* arquivoJSON;
+    cJSON* raiz;
+    openFile(nomeArquivo, &arquivoJSON, &raiz);
+
+    // Extrair o email do usuário a ser removido
+    cJSON* jsonRequest = cJSON_Parse(stringRequest);
+    cJSON* data = cJSON_GetObjectItem(jsonRequest, "data");
+    char* email = cJSON_GetStringValue(cJSON_GetObjectItem(data, "email"));
+
+    // Percorrer a matriz de perfis e remover o perfil com o email correspondente
+    cJSON* perfis = cJSON_GetObjectItem(raiz, "perfis");
+    cJSON* perfil;
+    int index = 0;
+    cJSON_ArrayForEach(perfil, perfis) {
+        if (strcmp(cJSON_GetStringValue(cJSON_GetObjectItem(perfil, "email")), email) == 0) {
+            cJSON_DeleteItemFromArray(perfis, index);
+            break;
+        }
+        index++;
+    }
+
+    // Atualizar a matriz de perfis no objeto JSON
+    cJSON_ReplaceItemInObject(raiz, "perfis", perfis);
+
+    // Salvar o objeto JSON atualizado no arquivo
+    arquivoJSON = fopen(nomeArquivo, "wb");
+    char* conteudoJSON = cJSON_Print(raiz);
+    printf("Usuário removido.\nConteúdo:\n%s\n",conteudoJSON);
+    fwrite(conteudoJSON, 1, strlen(conteudoJSON), arquivoJSON);
+    fclose(arquivoJSON);
+    free(conteudoJSON);
+
+    // Liberar a memória alocada pelo objeto JSON e sua matriz de perfis
+    cJSON_Delete(raiz);
+}
+
 void callOperation(char* buffer) {
     cJSON* jsonRequest = cJSON_Parse(buffer);
 
@@ -64,6 +104,10 @@ void callOperation(char* buffer) {
     {
     case CADASTRAR_PERFIL:
         registrarPerfil("perfis.json", buffer);
+        break;
+
+    case DELETAR_PERFIL:
+        removerPerfil("perfis.json", buffer);
         break;
     
     default:

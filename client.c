@@ -39,6 +39,27 @@ char* cadastrarPerfil() {
     return json_string;
 }
 
+char* removerPerfil() {
+    // Objeto JSON
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(root, "data", data);
+    cJSON_AddNumberToObject(root, "operation", DELETAR_PERFIL);
+
+    // Preencher requisição como o email
+    char input[100];
+    printf("Digite o email do perfil que deseja remover: ");
+    scanf("%[^\n]%*c", &input);
+    cJSON_AddStringToObject(data, "email", input);
+
+    // Converte o objeto JSON para uma string formatada
+    char *json_string = cJSON_Print(root);
+    printf("JSON gerado: %s\n", json_string);
+
+    return json_string;
+}
+
 int chooseOperation(int sock) {
     struct sockaddr_in serv_addr;
     char input[100];
@@ -111,6 +132,11 @@ int chooseOperation(int sock) {
     
     case DELETAR_PERFIL:
         option = DELETAR_PERFIL;
+
+        char* request = removerPerfil();
+        // Send message to server
+        printf("Sending message to server\n%s\n", request);
+        send(sock, request, strlen(request), 0);
         break;
     
     case SAIR:

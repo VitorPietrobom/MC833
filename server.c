@@ -73,24 +73,10 @@ void registrarPerfil(char* nomeArquivo, char* perfilString) {
 }
 
 void listarPerfis(char* nomeArquivo) {
-    // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
+        // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
     FILE* arquivoJSON;
     cJSON* raiz;
-    if ((arquivoJSON = fopen(nomeArquivo, "rb")) == NULL) {
-        // Criar um novo objeto JSON vazio se o arquivo não existir
-        printf("O arquivo %s não existe\n", nomeArquivo);
-        return;
-    } else {
-        // Carregar o objeto JSON existente do arquivo
-        fseek(arquivoJSON, 0, SEEK_END);
-        long tamanhoArquivo = ftell(arquivoJSON);
-        rewind(arquivoJSON);
-        char* conteudoArquivo = malloc(tamanhoArquivo + 1);
-        fread(conteudoArquivo, 1, tamanhoArquivo, arquivoJSON);
-        fclose(arquivoJSON);
-        raiz = cJSON_Parse(conteudoArquivo);
-        free(conteudoArquivo);
-    }
+    openFile(nomeArquivo, &arquivoJSON, &raiz);
 
     // Listar todos os perfis contidos no arquivo JSON
     cJSON* perfis = cJSON_GetObjectItem(raiz, "perfis");

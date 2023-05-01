@@ -5,8 +5,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #define PORT 8080
+
 
 
 // FINALIZADA - FUNCIONANDO  - NÃO ALTERAR
@@ -51,6 +53,18 @@ void registrarPerfil(char* nomeArquivo, char* perfilString) {
     cJSON_Delete(raiz);
 }
 
+void* handleClient(void* arg) {
+    int client_socket = *(int*)arg;
+
+    int read_size;    
+    char buffer[1024];
+    while (1) {
+        bzero(buffer, 1024);
+        read_size = recv(client_socket, buffer, sizeof(buffer),0);
+        registrarPerfil("perfis.json", buffer);
+    }
+}
+
 int main(int argc, char const *argv[]) {
     int server_fd, new_socket, valread;
     struct sockaddr_in address;
@@ -91,20 +105,32 @@ int main(int argc, char const *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    // Accept incoming connection
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-        perror("accept");
-        exit(EXIT_FAILURE);
+    int client_socket;
+
+    while (1) {
+        client_socket = accept(server_fd, NULL, NULL);
+        printf("client accepted\n");
+        pthread_t tid; // precisa de thread pra atender em simultaneo
+        pthread_create(&tid, NULL, handleClient, (void*)&client_socket);
+        pthread_detach(tid);
     }
 
+    close(client_socket);
+
+    // // Accept incoming connection
+    // if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
+    //     perror("accept");
+    //     exit(EXIT_FAILURE);
+    // }
+
     // Read data from client
-    valread = recv(new_socket, buffer, 1024, 0);
-    registrarPerfil("perfis.json", buffer);
+    // valread = recv(new_socket, buffer, 1024, 0);
+    // registrarPerfil("perfis.json", buffer);
     //printf("Return of valread: %d\n",valread);
     //printf("Input: %s\n",buffer);
 
-    // Send message to client
-    send(new_socket, hello, strlen(hello), 0);
+    // // Send message to client
+    // send(new_socket, hello, strlen(hello), 0);
 
     return 0;
 }

@@ -39,6 +39,19 @@ char* cadastrarPerfil() {
     return json_string;
 }
 
+char* listarPerfis() {
+    // Objeto JSON
+    cJSON *root = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(root, "operation", LISTAR_PERFIS_COMPLETO);
+
+    // Converte o objeto JSON para uma string formatada
+    char *json_string = cJSON_Print(root);
+    printf("JSON gerado: %s\n", json_string);
+
+    return json_string;
+}
+
 char* removerPerfil() {
     // Objeto JSON
     cJSON *root = cJSON_CreateObject();
@@ -128,6 +141,12 @@ int chooseOperation(int sock) {
 
     case LISTAR_PERFIS_COMPLETO:
         option = LISTAR_PERFIS_COMPLETO;
+        
+        // Send message to server
+        char* listing = listarPerfis();
+        printf("Requesting listing to server\n");
+        send(sock, listing, strlen(listing), 0);
+        
         break;
     
     case DELETAR_PERFIL:
@@ -159,6 +178,7 @@ int main(int argc, char const *argv[]) {
 
     while(option != SAIR) {
         option = chooseOperation(sock);
+        printf("%i", option);
   
         // Read data from server
         valread = recv(sock, buffer, 1024, 0);

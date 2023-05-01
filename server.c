@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <pthread.h>
+#include "settings.h"
 
 #define PORT 8080
 
@@ -13,7 +14,6 @@
 
 // FINALIZADA - FUNCIONANDO  - NÃO ALTERAR
 void registrarPerfil(char* nomeArquivo, char* perfilString) {
-    printf("%s\n", perfilString);
     // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
     FILE* arquivoJSON;
     cJSON* raiz;
@@ -33,7 +33,8 @@ void registrarPerfil(char* nomeArquivo, char* perfilString) {
     }
 
     // Criar um novo objeto JSON para o perfil e adicioná-lo à matriz "perfis"
-    cJSON* perfil = cJSON_Parse(perfilString);
+    cJSON* jsonRequest = cJSON_Parse(perfilString);
+    cJSON* perfil = cJSON_GetObjectItem(jsonRequest, "data");
     
     cJSON* perfis = cJSON_GetObjectItem(raiz, "perfis");
     if (perfis == NULL) {
@@ -45,13 +46,29 @@ void registrarPerfil(char* nomeArquivo, char* perfilString) {
     // Salvar o objeto JSON atualizado no arquivo
     arquivoJSON = fopen(nomeArquivo, "wb");
     char* conteudoJSON = cJSON_Print(raiz);
-    printf("%s\n",conteudoJSON);
+    printf("Usuário adicionado.\nConteúdo:\n%s\n",conteudoJSON);
     fwrite(conteudoJSON, 1, strlen(conteudoJSON), arquivoJSON);
     fclose(arquivoJSON);
     free(conteudoJSON);
 
     // Liberar a memória alocada pelo objeto JSON e sua matriz de perfis
     cJSON_Delete(raiz);
+}
+
+void callOperation(char* buffer) {
+    cJSON* jsonRequest = cJSON_Parse(buffer);
+
+    int operation = cJSON_GetNumberValue(cJSON_GetObjectItem(jsonRequest, "operation"));
+
+    switch (operation)
+    {
+    case CADASTRAR_PERFIL:
+        registrarPerfil("perfis.json", buffer);
+        break;
+    
+    default:
+        break;
+    }
 }
 
 void *handle_connection(void *arg) {
@@ -61,7 +78,7 @@ void *handle_connection(void *arg) {
 
     // Read data from client
     int valread = recv(new_socket, buffer, 1024, 0);
-    registrarPerfil("perfis.json", buffer);
+    callOperation(buffer);
 
     // Send message to client
     send(new_socket, hello, strlen(hello), 0);

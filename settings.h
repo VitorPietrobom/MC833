@@ -1,0 +1,12 @@
+#ifndef SETTINGS_H
+#define SETTINGS_H
+
+enum OPTIONS_ID {
+    CADASTRAR_PERFIL = 1,
+    BUSCAR_PERFIL,
+    LISTAR_PERFIS,
+    DELETAR_PERFIL,
+    SAIR
+};
+
+#endif

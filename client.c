@@ -10,7 +10,7 @@
 
 #define PORT 8080
 
-const char *OPTIONS[] = {"Cadastrar perfil", "Buscar perfil", "Listar perfis", "Deletar perfil", "Sair"};
+const char *OPTIONS[] = {"Cadastrar perfil", "Buscar perfil por email", "Listar perfis por ano", "Listar perfis por habilidade", "Listar perfis por curso", "Listar todos os perfis", "Deletar perfil", "Sair"};
 
 char* cadastrarPerfil() {
     // Array de labels dos campos
@@ -46,7 +46,7 @@ int chooseOperation(int sock) {
 
     // Get operation ID from user
     printf("Que operação gostaria de realizar?\n");
-    for(int i = 0; i < 5; i++) {
+    for(int i = 0; i < 8; i++) {
         printf("%d. %s\n", i+1, OPTIONS[i]);
     }
 
@@ -89,12 +89,24 @@ int chooseOperation(int sock) {
         break;
     }
     
-    case BUSCAR_PERFIL:
-        option = BUSCAR_PERFIL;
+    case BUSCAR_PERFIL_EMAIL:
+        option = BUSCAR_PERFIL_EMAIL;
         break;
 
-    case LISTAR_PERFIS:
-        option = LISTAR_PERFIS;
+    case LISTAR_PERFIL_ANO:
+        option = LISTAR_PERFIL_ANO;
+        break;
+
+    case LISTAR_PERFIL_HABILIDADE:
+        option = LISTAR_PERFIL_HABILIDADE;
+        break;
+
+    case LISTAR_PERFIL_CURSO:
+        option = LISTAR_PERFIL_CURSO;
+        break;
+
+    case LISTAR_PERFIS_COMPLETO:
+        option = LISTAR_PERFIS_COMPLETO;
         break;
     
     case DELETAR_PERFIL:

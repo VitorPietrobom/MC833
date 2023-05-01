@@ -6,16 +6,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdbool.h>
+#include "settings.h"
 
 #define PORT 8080
-
-enum OPTIONS_ID {
-    CADASTRAR_PERFIL = 1,
-    BUSCAR_PERFIL,
-    LISTAR_PERFIS,
-    DELETAR_PERFIL,
-    SAIR
-};
 
 const char *OPTIONS[] = {"Cadastrar perfil", "Buscar perfil", "Listar perfis", "Deletar perfil", "Sair"};
 
@@ -25,6 +18,10 @@ char* cadastrarPerfil() {
 
     // Objeto JSON
     cJSON *root = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(root, "data", data);
+    cJSON_AddNumberToObject(root, "operation", CADASTRAR_PERFIL);
 
     // Loop para preencher o objeto JSON
     for (int i = 0; i < 7; i++) {
@@ -32,7 +29,7 @@ char* cadastrarPerfil() {
         printf("Digite o %s: ", fields[i]);
         scanf("%[^\n]%*c", &inputPerfil);
         //input[strcspn(input, "\n")] = 0;  // Remove o caractere de nova linha do final da entrada
-        cJSON_AddStringToObject(root, fields[i], inputPerfil);
+        cJSON_AddStringToObject(data, fields[i], inputPerfil);
     }
 
     // Converte o objeto JSON para uma string formatada
@@ -77,14 +74,17 @@ int chooseOperation(int sock) {
         return -1;
     }
 
+    printf("Conectado ao servidor\n");
     // Switch that calls the function according to the user's input
     switch (atoi(input))
     {
     case CADASTRAR_PERFIL:
     {
         option = CADASTRAR_PERFIL;
+
         char* profile = cadastrarPerfil();
         // Send message to server
+        printf("Sending message to server\n%s\n", profile);
         send(sock, profile, strlen(profile), 0);
         break;
     }

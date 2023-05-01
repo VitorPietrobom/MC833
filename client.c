@@ -5,11 +5,21 @@
 #include "cJSON.h"
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define PORT 8080
 
+enum OPTIONS_ID {
+    CADASTRAR_PERFIL = 1,
+    BUSCAR_PERFIL,
+    LISTAR_PERFIS,
+    DELETAR_PERFIL,
+    SAIR
+};
 
-char* Cadastrar_Perfil() {
+const char *OPTIONS[] = {"Cadastrar perfil", "Buscar perfil", "Listar perfis", "Deletar perfil", "Sair"};
+
+char* cadastrarPerfil() {
     // Array de labels dos campos
     char *fields[] = {"email", "nome", "sobrenome", "cidade", "formação", "ano de formatura", "habilidades"};
 
@@ -32,23 +42,18 @@ char* Cadastrar_Perfil() {
     return json_string;
 }
 
-int main(int argc, char const *argv[]) {
-    int sock = 0, valread;
+int chooseOperation(int sock) {
     struct sockaddr_in serv_addr;
-    char *hello = "Hello from client";
-    char buffer[1024] = {0};
     char input[100];
+    int option = -1;
 
+    // Get operation ID from user
     printf("Que operação gostaria de realizar?\n");
-    printf("1. Cadastrar perfil\n");
-    printf("2. Buscar perfil\n");
-    printf("3. Listar perfis\n");
-    printf("4. Deletar perfil\n");
-    printf("5. Sair\n");
+    for(int i = 0; i < 5; i++) {
+        printf("%d. %s\n", i+1, OPTIONS[i]);
+    }
 
     scanf("%[^\n]%*c", &input);
-
-    
 
     // Create socket file descriptor
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -75,32 +80,53 @@ int main(int argc, char const *argv[]) {
     // Switch that calls the function according to the user's input
     switch (atoi(input))
     {
-    case 1:
+    case CADASTRAR_PERFIL:
     {
-        char* profile = Cadastrar_Perfil();
+        option = CADASTRAR_PERFIL;
+        char* profile = cadastrarPerfil();
         // Send message to server
         send(sock, profile, strlen(profile), 0);
         break;
     }
-        
     
-    case 2:
+    case BUSCAR_PERFIL:
+        option = BUSCAR_PERFIL;
         break;
 
-    case 3:
+    case LISTAR_PERFIS:
+        option = LISTAR_PERFIS;
         break;
     
-    case 4:
+    case DELETAR_PERFIL:
+        option = DELETAR_PERFIL;
         break;
     
-    case 5:
+    case SAIR:
+        option = SAIR;
+        break;
+    
+    default:
+        printf("Opção inválida\n");
         break;
     }
 
-    // Read data from server
-    valread = recv(sock, buffer, 1024, 0);
-    printf("Return of valread: %d\n",valread);
-    printf("Input: %s\n",buffer);
+    return option;
+}
+
+int main(int argc, char const *argv[]) {
+    int sock = 0, valread;
+    char *hello = "Hello from client";
+    char buffer[1024] = {0};
+    int option = -1;
+
+    while(option != SAIR) {
+        option = chooseOperation(sock);
+  
+        // Read data from server
+        valread = recv(sock, buffer, 1024, 0);
+        printf("Return of valread: %d\n",valread);
+        printf("Input: %s\n",buffer);
+    }
 
     return 0;
 }

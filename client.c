@@ -12,6 +12,38 @@
 
 const char *OPTIONS[] = {"Cadastrar perfil", "Buscar perfil por email", "Listar perfis por ano", "Listar perfis por habilidade", "Listar perfis por curso", "Listar todos os perfis", "Deletar perfil", "Sair"};
 
+void printProfile(cJSON* perfil, int index) {
+    char* email = cJSON_GetObjectItem(perfil, "email")->valuestring;
+    char* nome = cJSON_GetObjectItem(perfil, "nome")->valuestring;
+    char* sobrenome = cJSON_GetObjectItem(perfil, "sobrenome")->valuestring;
+    char* cidade = cJSON_GetObjectItem(perfil, "cidade")->valuestring;
+    char* formacao = cJSON_GetObjectItem(perfil, "formação")->valuestring;
+    char* anoFormatura = cJSON_GetObjectItem(perfil, "ano de formatura")->valuestring;
+    char* habilidades = cJSON_GetObjectItem(perfil, "habilidades")->valuestring;
+    printf("Perfil %d:\n", index + 1);
+    printf("\tEmail: %s\n", email);
+    printf("\tNome completo: %s %s\n", nome, sobrenome);
+    printf("\tCidade: %s\n", cidade);
+    printf("\tFormação: %s\n", formacao);
+    printf("\tAno de formatura: %s\n", anoFormatura);
+    printf("\tHabilidades: %s\n", habilidades);
+}
+
+void printListProfiles(int sock, char* filtro) {
+    char buffer[1024] = {0};
+    int valread;
+
+    valread = recv(sock, buffer, 1024, 0);
+    cJSON* userListJson = cJSON_Parse(buffer);
+
+    printf("Perfis no arquivo:\n");
+    int numPerfis = cJSON_GetArraySize(userListJson);
+    for (int i = 0; i < numPerfis; i++) {
+        cJSON* perfil = cJSON_GetArrayItem(userListJson, i);
+        printProfile(perfil, i);
+    }
+}
+
 char* cadastrarPerfil() {
     // Array de labels dos campos
     char *fields[] = {"email", "nome", "sobrenome", "cidade", "formação", "ano de formatura", "habilidades"};
@@ -34,7 +66,6 @@ char* cadastrarPerfil() {
 
     // Converte o objeto JSON para uma string formatada
     char *json_string = cJSON_Print(root);
-    printf("JSON gerado: %s\n", json_string);
 
     return json_string;
 }
@@ -55,7 +86,7 @@ char* buscarPerfil() {
 
     // Converte o objeto JSON para uma string formatada
     char *json_string = cJSON_Print(root);
-    printf("JSON gerado: %s\n", json_string);
+
 
     return json_string;
 }
@@ -68,7 +99,6 @@ char* listarPerfis() {
 
     // Converte o objeto JSON para uma string formatada
     char *json_string = cJSON_Print(root);
-    printf("JSON gerado: %s\n", json_string);
 
     return json_string;
 }
@@ -89,7 +119,6 @@ char* listarFiltradoCurso() {
 
     // Converte o objeto JSON para uma string formatada
     char *json_string = cJSON_Print(root);
-    printf("JSON gerado: %s\n", json_string);
 
     return json_string;
 }
@@ -110,7 +139,6 @@ char* listarFiltradoAno() {
 
     // Converte o objeto JSON para uma string formatada
     char *json_string = cJSON_Print(root);
-    printf("JSON gerado: %s\n", json_string);
 
     return json_string;
 }
@@ -131,7 +159,6 @@ char* listarFiltradoHabilidades() {
 
     // Converte o objeto JSON para uma string formatada
     char *json_string = cJSON_Print(root);
-    printf("JSON gerado: %s\n", json_string);
 
     return json_string;
 }
@@ -152,7 +179,6 @@ char* removerPerfil() {
 
     // Converte o objeto JSON para uma string formatada
     char *json_string = cJSON_Print(root);
-    printf("JSON gerado: %s\n", json_string);
 
     return json_string;
 }
@@ -214,6 +240,7 @@ int chooseOperation(int sock) {
         // Send message to server
         printf("Sending message to server\n%s\n", emailSearch);
         send(sock, emailSearch, strlen(emailSearch), 0);
+        printListProfiles(sock, "");
         break;
 
     case LISTAR_PERFIL_ANO:
@@ -223,6 +250,7 @@ int chooseOperation(int sock) {
         // Send message to server
         printf("Sending message to server\n%s\n", filterAnoRequest);
         send(sock, filterAnoRequest, strlen(filterAnoRequest), 0);
+        printListProfiles(sock, "ano de formatura");
         break;
 
     case LISTAR_PERFIL_HABILIDADE:
@@ -232,6 +260,7 @@ int chooseOperation(int sock) {
         // Send message to server
         printf("Sending message to server\n%s\n", filterAbilitiesRequest);
         send(sock, filterAbilitiesRequest, strlen(filterAbilitiesRequest), 0);
+        printListProfiles(sock, "habilidades");
         break;
 
     case LISTAR_PERFIL_CURSO:
@@ -241,6 +270,7 @@ int chooseOperation(int sock) {
         // Send message to server
         printf("Sending message to server\n%s\n", filterRequest);
         send(sock, filterRequest, strlen(filterRequest), 0);
+        printListProfiles(sock, "formação");
         break;
 
     case LISTAR_PERFIS_COMPLETO:
@@ -250,7 +280,7 @@ int chooseOperation(int sock) {
         char* listing = listarPerfis();
         printf("Requesting listing to server\n");
         send(sock, listing, strlen(listing), 0);
-        
+        printListProfiles(sock, "");
         break;
     
     case DELETAR_PERFIL:
@@ -275,19 +305,11 @@ int chooseOperation(int sock) {
 }
 
 int main(int argc, char const *argv[]) {
-    int sock = 0, valread;
-    char *hello = "Hello from client";
-    char buffer[1024] = {0};
+    int sock = 0;
     int option = -1;
 
     while(option != SAIR) {
         option = chooseOperation(sock);
-        printf("%i", option);
-  
-        // Read data from server
-        valread = recv(sock, buffer, 1024, 0);
-        printf("Return of valread: %d\n",valread);
-        printf("Input: %s\n",buffer);
     }
 
     return 0;

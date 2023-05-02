@@ -9,7 +9,9 @@
 #include "settings.h"
 
 #define PORT 8080
+#define ARQUIVO "perfis.json"
 
+// Funcao auxiliar para abrir o .json
 void openFile(char* nomeArquivo, FILE** arquivoJSON, cJSON** raiz) {
     if ((*arquivoJSON = fopen(nomeArquivo, "rb")) == NULL) {
         // Criar um novo objeto JSON vazio se o arquivo não existir
@@ -40,11 +42,10 @@ void printProfile(cJSON* perfil, int index) {
     printf("\tNome completo: %s %s\n", nome, sobrenome);
     printf("\tCidade: %s\n", cidade);
     printf("\tFormação: %s\n", formacao);
-    printf("\tAno de formatura: %d\n", anoFormatura);
+    printf("\tAno de formatura: %s\n", anoFormatura);
     printf("\tHabilidades: %s\n", habilidades);
 }
 
-// FINALIZADA - FUNCIONANDO  - NÃO ALTERAR
 void registrarPerfil(char* nomeArquivo, char* perfilString) {
     // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
     FILE* arquivoJSON;
@@ -87,7 +88,7 @@ void registrarPerfil(char* nomeArquivo, char* perfilString) {
     cJSON_Delete(raiz);
 }
 
-void listarPerfis(char* nomeArquivo) {
+char* listarPerfis(char* nomeArquivo) {
     // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
     FILE* arquivoJSON;
     cJSON* raiz;
@@ -98,20 +99,18 @@ void listarPerfis(char* nomeArquivo) {
     if (perfis == NULL) {
         printf("Não há perfis no arquivo %s\n", nomeArquivo);
         cJSON_Delete(raiz);
-        return;
+        return "";
     }
-    printf("Perfis no arquivo %s:\n", nomeArquivo);
-    int numPerfis = cJSON_GetArraySize(perfis);
-    for (int i = 0; i < numPerfis; i++) {
-        cJSON* perfil = cJSON_GetArrayItem(perfis, i);
-        printProfile(perfil, i);
-    }
+
+    char *json_string = cJSON_Print(perfis);
 
     // Liberar a memória alocada pelo objeto JSON e sua matriz de perfis
     cJSON_Delete(raiz);
+
+    return json_string;
 }
 
-void listarFiltrado(char* nomeArquivo, char* stringRequest, char* filtro) {
+char* listarFiltrado(char* nomeArquivo, char* stringRequest, char* filtro) {
     // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
     FILE* arquivoJSON;
     cJSON* raiz;
@@ -140,19 +139,15 @@ void listarFiltrado(char* nomeArquivo, char* stringRequest, char* filtro) {
         index++;
     }
 
-    printf("Perfis no arquivo %s:\n", nomeArquivo);
-    int numPerfis = cJSON_GetArraySize(perfisFiltrados);
-    for (int i = 0; i < numPerfis; i++) {
-        cJSON* perfil = cJSON_GetArrayItem(perfisFiltrados, i);
-        printProfile(perfil, i);
-    }
+    char *json_string = cJSON_Print(perfisFiltrados);
 
     // Liberar a memória alocada pelo objeto JSON e sua matriz de perfis
     cJSON_Delete(perfisFiltrados);
     cJSON_Delete(raiz);
+    return json_string;
 }
 
-void buscarPerfil(char* nomeArquivo, char* stringRequest) {
+char* buscarPerfil(char* nomeArquivo, char* stringRequest) {
     // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
     FILE* arquivoJSON;
     cJSON* raiz;
@@ -165,18 +160,23 @@ void buscarPerfil(char* nomeArquivo, char* stringRequest) {
 
     // Percorrer a matriz de perfis e remover o perfil com o email correspondente
     cJSON* perfis = cJSON_GetObjectItem(raiz, "perfis");
-    cJSON* perfil;
+    cJSON* perfisFiltrados = cJSON_CreateObject();
+    cJSON* perfil; 
     int index = 0;
     cJSON_ArrayForEach(perfil, perfis) {
         if (strcmp(cJSON_GetStringValue(cJSON_GetObjectItem(perfil, "email")), email) == 0) {
-            printProfile(perfil, 0);
+            cJSON_AddItemReferenceToArray(perfisFiltrados, perfil);
             break;
         }
         index++;
     }
 
+    char *json_string = cJSON_Print(perfisFiltrados);
+
+
     // Liberar a memória alocada pelo objeto JSON e sua matriz de perfis
     cJSON_Delete(raiz);
+    return json_string;
 }
 
 void removerPerfil(char* nomeArquivo, char* stringRequest) {
@@ -217,39 +217,45 @@ void removerPerfil(char* nomeArquivo, char* stringRequest) {
     cJSON_Delete(raiz);
 }
 
-void callOperation(char* buffer) {
+void callOperation(char* buffer, int socket) {
     cJSON* jsonRequest = cJSON_Parse(buffer);
+    char* filtered_string;
 
     int operation = cJSON_GetNumberValue(cJSON_GetObjectItem(jsonRequest, "operation"));
 
     switch (operation)
     {
     case CADASTRAR_PERFIL:
-        registrarPerfil("perfis.json", buffer);
+        registrarPerfil(ARQUIVO, buffer);
         break;
 
     case BUSCAR_PERFIL_EMAIL:
-        buscarPerfil("perfis.json", buffer);
+        filtered_string = buscarPerfil(ARQUIVO, buffer);
+        send(socket, filtered_string, strlen(filtered_string), 0);
         break;
 
     case LISTAR_PERFIL_ANO:
-        listarFiltrado("perfis.json", buffer, "ano de formatura");
+        filtered_string = listarFiltrado(ARQUIVO, buffer, "ano de formatura");
+        send(socket, filtered_string, strlen(filtered_string), 0);
         break;
 
     case LISTAR_PERFIL_CURSO:
-        listarFiltrado("perfis.json", buffer, "formação");
+        filtered_string = listarFiltrado(ARQUIVO, buffer, "formação");
+        send(socket, filtered_string, strlen(filtered_string), 0);
         break;
 
     case LISTAR_PERFIL_HABILIDADE:
-        listarFiltrado("perfis.json", buffer, "habilidades");
+        filtered_string = listarFiltrado(ARQUIVO, buffer, "habilidades");
+        send(socket, filtered_string, strlen(filtered_string), 0);
         break;
 
     case LISTAR_PERFIS_COMPLETO:
-        listarPerfis("perfis.json");
+        filtered_string = listarPerfis(ARQUIVO);
+        send(socket, filtered_string, strlen(filtered_string), 0);
         break;
 
     case DELETAR_PERFIL:
-        removerPerfil("perfis.json", buffer);
+        removerPerfil(ARQUIVO, buffer);
         break;
     
     default:
@@ -260,14 +266,10 @@ void callOperation(char* buffer) {
 void *handle_connection(void *arg) {
     int new_socket = *(int*)arg;
     char buffer[1024] = {0};
-    char *hello = "Hello from server";
-
-    // Send message to client
-    send(new_socket, hello, strlen(hello), 0);
 
     // Read data from client
     int valread = recv(new_socket, buffer, 1024, 0);
-    callOperation(buffer);
+    callOperation(buffer, new_socket);
 
     // Close socket
     close(new_socket);
@@ -305,15 +307,15 @@ int main(int argc, char const *argv[]) {
     }
 
     // Start listening for incoming connections
-    if (listen(server_fd, 3) < 0) {
-        perror("listen");
+    if (listen(server_fd, 5) < 0) {
+        perror("listen failed");
         exit(EXIT_FAILURE);
     }
 
     while (1) {
         // Accept incoming connection
         if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-            perror("accept");
+            perror("accept failed");
             exit(EXIT_FAILURE);
         }
 

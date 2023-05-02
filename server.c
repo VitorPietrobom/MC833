@@ -128,8 +128,14 @@ void listarFiltrado(char* nomeArquivo, char* stringRequest, char* filtro) {
     cJSON* perfil;
     int index = 0;
     cJSON_ArrayForEach(perfil, perfis) {
-        if (strcmp(cJSON_GetStringValue(cJSON_GetObjectItem(perfil, filtro)), campo) == 0) {
-            cJSON_AddItemReferenceToArray(perfisFiltrados, perfil);
+        if (filtro == "habilidades") {
+            if (strstr(cJSON_GetStringValue(cJSON_GetObjectItem(perfil, filtro)), campo) != NULL) {
+                cJSON_AddItemReferenceToArray(perfisFiltrados, perfil);
+            }
+        } else {
+            if (strcmp(cJSON_GetStringValue(cJSON_GetObjectItem(perfil, filtro)), campo) == 0) {
+                cJSON_AddItemReferenceToArray(perfisFiltrados, perfil);
+            }
         }
         index++;
     }
@@ -232,6 +238,10 @@ void callOperation(char* buffer) {
 
     case LISTAR_PERFIL_CURSO:
         listarFiltrado("perfis.json", buffer, "formação");
+        break;
+
+    case LISTAR_PERFIL_HABILIDADE:
+        listarFiltrado("perfis.json", buffer, "habilidades");
         break;
 
     case LISTAR_PERFIS_COMPLETO:

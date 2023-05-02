@@ -115,6 +115,27 @@ char* listarFiltradoAno() {
     return json_string;
 }
 
+char* listarFiltradoHabilidades() {
+    // Objeto JSON
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(root, "data", data);
+    cJSON_AddNumberToObject(root, "operation", LISTAR_PERFIL_HABILIDADE);
+
+    // Preencher requisição como o email
+    char input[100];
+    printf("Digite a habilidade pela qual deseja filtrar: ");
+    scanf("%[^\n]%*c", &input);
+    cJSON_AddStringToObject(data, "habilidades", input);
+
+    // Converte o objeto JSON para uma string formatada
+    char *json_string = cJSON_Print(root);
+    printf("JSON gerado: %s\n", json_string);
+
+    return json_string;
+}
+
 char* removerPerfil() {
     // Objeto JSON
     cJSON *root = cJSON_CreateObject();
@@ -206,6 +227,11 @@ int chooseOperation(int sock) {
 
     case LISTAR_PERFIL_HABILIDADE:
         option = LISTAR_PERFIL_HABILIDADE;
+
+        char* filterAbilitiesRequest = listarFiltradoHabilidades();
+        // Send message to server
+        printf("Sending message to server\n%s\n", filterAbilitiesRequest);
+        send(sock, filterAbilitiesRequest, strlen(filterAbilitiesRequest), 0);
         break;
 
     case LISTAR_PERFIL_CURSO:

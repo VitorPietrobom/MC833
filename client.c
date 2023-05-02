@@ -39,11 +39,74 @@ char* cadastrarPerfil() {
     return json_string;
 }
 
+char* buscarPerfil() {
+    // Objeto JSON
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(root, "data", data);
+    cJSON_AddNumberToObject(root, "operation", BUSCAR_PERFIL_EMAIL);
+
+    // Preencher requisição como o email
+    char input[100];
+    printf("Digite o email pelo qual deseja pesquisar: ");
+    scanf("%[^\n]%*c", &input);
+    cJSON_AddStringToObject(data, "email", input);
+
+    // Converte o objeto JSON para uma string formatada
+    char *json_string = cJSON_Print(root);
+    printf("JSON gerado: %s\n", json_string);
+
+    return json_string;
+}
+
 char* listarPerfis() {
     // Objeto JSON
     cJSON *root = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(root, "operation", LISTAR_PERFIS_COMPLETO);
+
+    // Converte o objeto JSON para uma string formatada
+    char *json_string = cJSON_Print(root);
+    printf("JSON gerado: %s\n", json_string);
+
+    return json_string;
+}
+
+char* listarFiltradoCurso() {
+    // Objeto JSON
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(root, "data", data);
+    cJSON_AddNumberToObject(root, "operation", LISTAR_PERFIL_CURSO);
+
+    // Preencher requisição como o email
+    char input[100];
+    printf("Digite o curso pelo qual deseja filtrar: ");
+    scanf("%[^\n]%*c", &input);
+    cJSON_AddStringToObject(data, "formação", input);
+
+    // Converte o objeto JSON para uma string formatada
+    char *json_string = cJSON_Print(root);
+    printf("JSON gerado: %s\n", json_string);
+
+    return json_string;
+}
+
+char* listarFiltradoAno() {
+    // Objeto JSON
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(root, "data", data);
+    cJSON_AddNumberToObject(root, "operation", LISTAR_PERFIL_ANO);
+
+    // Preencher requisição como o email
+    char input[100];
+    printf("Digite o ano de formação pelo qual deseja filtrar: ");
+    scanf("%[^\n]%*c", &input);
+    cJSON_AddStringToObject(data, "ano de formatura", input);
 
     // Converte o objeto JSON para uma string formatada
     char *json_string = cJSON_Print(root);
@@ -125,10 +188,20 @@ int chooseOperation(int sock) {
     
     case BUSCAR_PERFIL_EMAIL:
         option = BUSCAR_PERFIL_EMAIL;
+
+        char* emailSearch = buscarPerfil();
+        // Send message to server
+        printf("Sending message to server\n%s\n", emailSearch);
+        send(sock, emailSearch, strlen(emailSearch), 0);
         break;
 
     case LISTAR_PERFIL_ANO:
         option = LISTAR_PERFIL_ANO;
+
+        char* filterAnoRequest = listarFiltradoAno();
+        // Send message to server
+        printf("Sending message to server\n%s\n", filterAnoRequest);
+        send(sock, filterAnoRequest, strlen(filterAnoRequest), 0);
         break;
 
     case LISTAR_PERFIL_HABILIDADE:
@@ -137,6 +210,11 @@ int chooseOperation(int sock) {
 
     case LISTAR_PERFIL_CURSO:
         option = LISTAR_PERFIL_CURSO;
+
+        char* filterRequest = listarFiltradoCurso();
+        // Send message to server
+        printf("Sending message to server\n%s\n", filterRequest);
+        send(sock, filterRequest, strlen(filterRequest), 0);
         break;
 
     case LISTAR_PERFIS_COMPLETO:

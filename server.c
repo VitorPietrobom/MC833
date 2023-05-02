@@ -27,6 +27,23 @@ void openFile(char* nomeArquivo, FILE** arquivoJSON, cJSON** raiz) {
     }
 }
 
+void printProfile(cJSON* perfil, int index) {
+    char* email = cJSON_GetObjectItem(perfil, "email")->valuestring;
+    char* nome = cJSON_GetObjectItem(perfil, "nome")->valuestring;
+    char* sobrenome = cJSON_GetObjectItem(perfil, "sobrenome")->valuestring;
+    char* cidade = cJSON_GetObjectItem(perfil, "cidade")->valuestring;
+    char* formacao = cJSON_GetObjectItem(perfil, "formação")->valuestring;
+    char* anoFormatura = cJSON_GetObjectItem(perfil, "ano de formatura")->valuestring;
+    char* habilidades = cJSON_GetObjectItem(perfil, "habilidades")->valuestring;
+    printf("Perfil %d:\n", index + 1);
+    printf("\tEmail: %s\n", email);
+    printf("\tNome completo: %s %s\n", nome, sobrenome);
+    printf("\tCidade: %s\n", cidade);
+    printf("\tFormação: %s\n", formacao);
+    printf("\tAno de formatura: %d\n", anoFormatura);
+    printf("\tHabilidades: %s\n", habilidades);
+}
+
 // FINALIZADA - FUNCIONANDO  - NÃO ALTERAR
 void registrarPerfil(char* nomeArquivo, char* perfilString) {
     // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
@@ -37,7 +54,6 @@ void registrarPerfil(char* nomeArquivo, char* perfilString) {
     // Criar um novo objeto JSON para o perfil e adicioná-lo à matriz "perfis"
     cJSON* jsonRequest = cJSON_Parse(perfilString);
     cJSON* perfil = cJSON_GetObjectItem(jsonRequest, "data");
-    
     
     cJSON* perfis = cJSON_GetObjectItem(raiz, "perfis");
     if (perfis == NULL) {
@@ -58,7 +74,6 @@ void registrarPerfil(char* nomeArquivo, char* perfilString) {
             }
         }
     }
-    
 
     // Salvar o objeto JSON atualizado no arquivo
     arquivoJSON = fopen(nomeArquivo, "wb");
@@ -73,7 +88,7 @@ void registrarPerfil(char* nomeArquivo, char* perfilString) {
 }
 
 void listarPerfis(char* nomeArquivo) {
-        // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
+    // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
     FILE* arquivoJSON;
     cJSON* raiz;
     openFile(nomeArquivo, &arquivoJSON, &raiz);
@@ -89,20 +104,69 @@ void listarPerfis(char* nomeArquivo) {
     int numPerfis = cJSON_GetArraySize(perfis);
     for (int i = 0; i < numPerfis; i++) {
         cJSON* perfil = cJSON_GetArrayItem(perfis, i);
-        char* email = cJSON_GetObjectItem(perfil, "email")->valuestring;
-        char* nome = cJSON_GetObjectItem(perfil, "nome")->valuestring;
-        char* sobrenome = cJSON_GetObjectItem(perfil, "sobrenome")->valuestring;
-        char* cidade = cJSON_GetObjectItem(perfil, "cidade")->valuestring;
-        char* formacao = cJSON_GetObjectItem(perfil, "formação")->valuestring;
-        int anoFormatura = cJSON_GetObjectItem(perfil, "ano de formatura")->valueint;
-        char* habilidades = cJSON_GetObjectItem(perfil, "habilidades")->valuestring;
-        printf("Perfil %d:\n", i + 1);
-        printf("\tEmail: %s\n", email);
-        printf("\tNome completo: %s %s\n", nome, sobrenome);
-        printf("\tCidade: %s\n", cidade);
-        printf("\tFormação: %s\n", formacao);
-        printf("\tAno de formatura: %d\n", anoFormatura);
-        printf("\tHabilidades: %s\n", habilidades);
+        printProfile(perfil, i);
+    }
+
+    // Liberar a memória alocada pelo objeto JSON e sua matriz de perfis
+    cJSON_Delete(raiz);
+}
+
+void listarFiltrado(char* nomeArquivo, char* stringRequest, char* filtro) {
+    // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
+    FILE* arquivoJSON;
+    cJSON* raiz;
+    openFile(nomeArquivo, &arquivoJSON, &raiz);
+
+    // Extrair o valor a ser filtrado
+    cJSON* jsonRequest = cJSON_Parse(stringRequest);
+    cJSON* data = cJSON_GetObjectItem(jsonRequest, "data");
+    char* campo = cJSON_GetStringValue(cJSON_GetObjectItem(data, filtro));
+
+    // Percorrer a matriz de perfis e filtra os perfis com a formação
+    cJSON* perfisFiltrados = cJSON_CreateObject();
+    cJSON* perfis = cJSON_GetObjectItem(raiz, "perfis");
+    cJSON* perfil;
+    int index = 0;
+    cJSON_ArrayForEach(perfil, perfis) {
+        if (strcmp(cJSON_GetStringValue(cJSON_GetObjectItem(perfil, filtro)), campo) == 0) {
+            cJSON_AddItemReferenceToArray(perfisFiltrados, perfil);
+        }
+        index++;
+    }
+
+    printf("Perfis no arquivo %s:\n", nomeArquivo);
+    int numPerfis = cJSON_GetArraySize(perfisFiltrados);
+    for (int i = 0; i < numPerfis; i++) {
+        cJSON* perfil = cJSON_GetArrayItem(perfisFiltrados, i);
+        printProfile(perfil, i);
+    }
+
+    // Liberar a memória alocada pelo objeto JSON e sua matriz de perfis
+    cJSON_Delete(perfisFiltrados);
+    cJSON_Delete(raiz);
+}
+
+void buscarPerfil(char* nomeArquivo, char* stringRequest) {
+    // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
+    FILE* arquivoJSON;
+    cJSON* raiz;
+    openFile(nomeArquivo, &arquivoJSON, &raiz);
+
+    // Extrair o email do usuário a ser removido
+    cJSON* jsonRequest = cJSON_Parse(stringRequest);
+    cJSON* data = cJSON_GetObjectItem(jsonRequest, "data");
+    char* email = cJSON_GetStringValue(cJSON_GetObjectItem(data, "email"));
+
+    // Percorrer a matriz de perfis e remover o perfil com o email correspondente
+    cJSON* perfis = cJSON_GetObjectItem(raiz, "perfis");
+    cJSON* perfil;
+    int index = 0;
+    cJSON_ArrayForEach(perfil, perfis) {
+        if (strcmp(cJSON_GetStringValue(cJSON_GetObjectItem(perfil, "email")), email) == 0) {
+            printProfile(perfil, 0);
+            break;
+        }
+        index++;
     }
 
     // Liberar a memória alocada pelo objeto JSON e sua matriz de perfis
@@ -158,6 +222,18 @@ void callOperation(char* buffer) {
         registrarPerfil("perfis.json", buffer);
         break;
 
+    case BUSCAR_PERFIL_EMAIL:
+        buscarPerfil("perfis.json", buffer);
+        break;
+
+    case LISTAR_PERFIL_ANO:
+        listarFiltrado("perfis.json", buffer, "ano de formatura");
+        break;
+
+    case LISTAR_PERFIL_CURSO:
+        listarFiltrado("perfis.json", buffer, "formação");
+        break;
+
     case LISTAR_PERFIS_COMPLETO:
         listarPerfis("perfis.json");
         break;
@@ -182,8 +258,6 @@ void *handle_connection(void *arg) {
     // Read data from client
     int valread = recv(new_socket, buffer, 1024, 0);
     callOperation(buffer);
-
-    
 
     // Close socket
     close(new_socket);
@@ -246,4 +320,3 @@ int main(int argc, char const *argv[]) {
 
     return 0;
 }
-

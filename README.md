@@ -12,7 +12,7 @@ Para rodar o servidor, abra um terminal e rode
 ./server
 ```
 
-Para rodar o cliente, abra um terminal e rode
+Para rodar o cliente, abra outro terminal e rode
 ```
 ./client
 ```

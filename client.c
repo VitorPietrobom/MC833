@@ -12,6 +12,7 @@
 
 const char *OPTIONS[] = {"Cadastrar perfil", "Buscar perfil por email", "Listar perfis por ano", "Listar perfis por habilidade", "Listar perfis por curso", "Listar todos os perfis", "Deletar perfil", "Sair"};
 
+// Funcao auxiliar para imprimir um usuario
 void printProfile(cJSON* perfil, int index) {
     char* email = cJSON_GetObjectItem(perfil, "email")->valuestring;
     char* nome = cJSON_GetObjectItem(perfil, "nome")->valuestring;
@@ -29,6 +30,7 @@ void printProfile(cJSON* perfil, int index) {
     printf("\tHabilidades: %s\n", habilidades);
 }
 
+// funcao auxiliar que imprime uma lista de usuarios
 void printListProfiles(int sock, char* filtro) {
     char buffer[1024] = {0};
     int valread;
@@ -44,6 +46,7 @@ void printListProfiles(int sock, char* filtro) {
     }
 }
 
+// Funcao 1 -  Prepara input para CADASTRAR_PERFIL
 char* cadastrarPerfil() {
     // Array de labels dos campos
     char *fields[] = {"email", "nome", "sobrenome", "cidade", "formação", "ano de formatura", "habilidades"};
@@ -60,7 +63,6 @@ char* cadastrarPerfil() {
         char inputPerfil[100];
         printf("Digite o %s: ", fields[i]);
         scanf("%[^\n]%*c", &inputPerfil);
-        //input[strcspn(input, "\n")] = 0;  // Remove o caractere de nova linha do final da entrada
         cJSON_AddStringToObject(data, fields[i], inputPerfil);
     }
 
@@ -70,6 +72,7 @@ char* cadastrarPerfil() {
     return json_string;
 }
 
+// funcao 2 -  Prepara input para BUSCAR_PERFIL_EMAIL
 char* buscarPerfil() {
     // Objeto JSON
     cJSON *root = cJSON_CreateObject();
@@ -91,6 +94,7 @@ char* buscarPerfil() {
     return json_string;
 }
 
+// Funcao 3 - Prepara input para LISTAR_PERFIS_COMPLETO
 char* listarPerfis() {
     // Objeto JSON
     cJSON *root = cJSON_CreateObject();
@@ -103,6 +107,7 @@ char* listarPerfis() {
     return json_string;
 }
 
+// Funcao 4 -  Prepara input para LISTAR_PERFIL_CURSO
 char* listarFiltradoCurso() {
     // Objeto JSON
     cJSON *root = cJSON_CreateObject();
@@ -123,6 +128,7 @@ char* listarFiltradoCurso() {
     return json_string;
 }
 
+// Funcao 5 -  Prepara input para LISTAR_PERFIL_ANO
 char* listarFiltradoAno() {
     // Objeto JSON
     cJSON *root = cJSON_CreateObject();
@@ -143,6 +149,7 @@ char* listarFiltradoAno() {
     return json_string;
 }
 
+// Funcao 6 -  Prepara input para LISTAR_PERFIL_HABILIDADE
 char* listarFiltradoHabilidades() {
     // Objeto JSON
     cJSON *root = cJSON_CreateObject();
@@ -163,6 +170,7 @@ char* listarFiltradoHabilidades() {
     return json_string;
 }
 
+// Funcao 7 -  Prepara input para DELETAR_PERFIL
 char* removerPerfil() {
     // Objeto JSON
     cJSON *root = cJSON_CreateObject();
@@ -183,12 +191,14 @@ char* removerPerfil() {
     return json_string;
 }
 
+
+// Funcao utilizada para preparar a escolha do cliente e enviar para o usuario
 int chooseOperation(int sock) {
     struct sockaddr_in serv_addr;
     char input[100];
     int option = -1;
 
-    // Get operation ID from user
+    // Pega o ID da operacao
     printf("Que operação gostaria de realizar?\n");
     for(int i = 0; i < 8; i++) {
         printf("%d. %s\n", i+1, OPTIONS[i]);
@@ -196,30 +206,30 @@ int chooseOperation(int sock) {
 
     scanf("%[^\n]%*c", &input);
 
-    // Create socket file descriptor
+    // Cria um socket file descriptor
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         printf("\n Socket creation error \n");
         return -1;
     }
 
-    // Set server address
+    // Configura o endereco do server
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT);
 
-    // Convert IP address from string to binary form
+    // Converte ip de string para binario
     if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
         printf("\nInvalid address/ Address not supported \n");
         return -1;
     }
 
-    // Connect to server
+    // Conecta no servidor
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         printf("\nConnection Failed \n");
         return -1;
     }
 
     printf("Conectado ao servidor\n");
-    // Switch that calls the function according to the user's input
+    // Switch que ajuda na chamada das funcoes
     switch (atoi(input))
     {
     case CADASTRAR_PERFIL:
@@ -227,7 +237,7 @@ int chooseOperation(int sock) {
         option = CADASTRAR_PERFIL;
 
         char* profile = cadastrarPerfil();
-        // Send message to server
+        // Envia mensagem para o servidor
         printf("Sending message to server\n%s\n", profile);
         send(sock, profile, strlen(profile), 0);
         break;
@@ -237,7 +247,7 @@ int chooseOperation(int sock) {
         option = BUSCAR_PERFIL_EMAIL;
 
         char* emailSearch = buscarPerfil();
-        // Send message to server
+        // Envia mensagem para o servidor
         printf("Sending message to server\n%s\n", emailSearch);
         send(sock, emailSearch, strlen(emailSearch), 0);
         printListProfiles(sock, "");
@@ -247,7 +257,7 @@ int chooseOperation(int sock) {
         option = LISTAR_PERFIL_ANO;
 
         char* filterAnoRequest = listarFiltradoAno();
-        // Send message to server
+        // Envia mensagem para o servidor
         printf("Sending message to server\n%s\n", filterAnoRequest);
         send(sock, filterAnoRequest, strlen(filterAnoRequest), 0);
         printListProfiles(sock, "ano de formatura");
@@ -257,7 +267,7 @@ int chooseOperation(int sock) {
         option = LISTAR_PERFIL_HABILIDADE;
 
         char* filterAbilitiesRequest = listarFiltradoHabilidades();
-        // Send message to server
+        // Envia mensagem para o servidor
         printf("Sending message to server\n%s\n", filterAbilitiesRequest);
         send(sock, filterAbilitiesRequest, strlen(filterAbilitiesRequest), 0);
         printListProfiles(sock, "habilidades");
@@ -267,7 +277,7 @@ int chooseOperation(int sock) {
         option = LISTAR_PERFIL_CURSO;
 
         char* filterRequest = listarFiltradoCurso();
-        // Send message to server
+        // Envia mensagem para o servidor
         printf("Sending message to server\n%s\n", filterRequest);
         send(sock, filterRequest, strlen(filterRequest), 0);
         printListProfiles(sock, "formação");
@@ -276,7 +286,7 @@ int chooseOperation(int sock) {
     case LISTAR_PERFIS_COMPLETO:
         option = LISTAR_PERFIS_COMPLETO;
         
-        // Send message to server
+        // Envia mensagem para o servidor
         char* listing = listarPerfis();
         printf("Requesting listing to server\n");
         send(sock, listing, strlen(listing), 0);
@@ -287,7 +297,7 @@ int chooseOperation(int sock) {
         option = DELETAR_PERFIL;
 
         char* request = removerPerfil();
-        // Send message to server
+        // Envia mensagem para o servidor
         printf("Sending message to server\n%s\n", request);
         send(sock, request, strlen(request), 0);
         break;
@@ -308,6 +318,7 @@ int main(int argc, char const *argv[]) {
     int sock = 0;
     int option = -1;
 
+    // Roda ate o usuario escolher sair
     while(option != SAIR) {
         option = chooseOperation(sock);
     }

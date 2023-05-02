@@ -108,9 +108,8 @@ char* listarFiltrado(char* nomeArquivo, char* stringRequest, char* filtro) {
     cJSON* perfisFiltrados = cJSON_CreateObject();
     cJSON* perfis = cJSON_GetObjectItem(raiz, "perfis");
     cJSON* perfil;
-    int index = 0;
     cJSON_ArrayForEach(perfil, perfis) {
-        if (filtro == "habilidades") {
+        if (strcmp(filtro, "habilidades") == 0) {
             if (strstr(cJSON_GetStringValue(cJSON_GetObjectItem(perfil, filtro)), campo) != NULL) {
                 cJSON_AddItemReferenceToArray(perfisFiltrados, perfil);
             }
@@ -119,7 +118,6 @@ char* listarFiltrado(char* nomeArquivo, char* stringRequest, char* filtro) {
                 cJSON_AddItemReferenceToArray(perfisFiltrados, perfil);
             }
         }
-        index++;
     }
 
     char *json_string = cJSON_Print(perfisFiltrados);
@@ -144,18 +142,15 @@ char* buscarPerfil(char* nomeArquivo, char* stringRequest) {
     // Percorrer a matriz de perfis e remover o perfil com o email correspondente
     cJSON* perfis = cJSON_GetObjectItem(raiz, "perfis");
     cJSON* perfisFiltrados = cJSON_CreateObject();
-    cJSON* perfil; 
-    int index = 0;
+    cJSON* perfil;
     cJSON_ArrayForEach(perfil, perfis) {
         if (strcmp(cJSON_GetStringValue(cJSON_GetObjectItem(perfil, "email")), email) == 0) {
             cJSON_AddItemReferenceToArray(perfisFiltrados, perfil);
             break;
         }
-        index++;
     }
 
     char *json_string = cJSON_Print(perfisFiltrados);
-
 
     // Liberar a memória alocada pelo objeto JSON e sua matriz de perfis
     cJSON_Delete(raiz);
@@ -252,7 +247,7 @@ void *handle_connection(void *arg) {
     char buffer[1024] = {0};
 
     // Lê mensagem do cliente
-    int valread = recv(new_socket, buffer, 1024, 0);
+    recv(new_socket, buffer, 1024, 0);
     callOperation(buffer, new_socket);
 
     // Fecha socket

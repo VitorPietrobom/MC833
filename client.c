@@ -33,9 +33,8 @@ void printProfile(cJSON* perfil, int index) {
 // funcao auxiliar que imprime uma lista de usuarios
 void printListProfiles(int sock, char* filtro) {
     char buffer[1024] = {0};
-    int valread;
 
-    valread = recv(sock, buffer, 1024, 0);
+    recv(sock, buffer, 1024, 0);
     cJSON* userListJson = cJSON_Parse(buffer);
 
     printf("Perfis no arquivo:\n");

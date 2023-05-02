@@ -29,23 +29,6 @@ void openFile(char* nomeArquivo, FILE** arquivoJSON, cJSON** raiz) {
     }
 }
 
-void printProfile(cJSON* perfil, int index) {
-    char* email = cJSON_GetObjectItem(perfil, "email")->valuestring;
-    char* nome = cJSON_GetObjectItem(perfil, "nome")->valuestring;
-    char* sobrenome = cJSON_GetObjectItem(perfil, "sobrenome")->valuestring;
-    char* cidade = cJSON_GetObjectItem(perfil, "cidade")->valuestring;
-    char* formacao = cJSON_GetObjectItem(perfil, "formação")->valuestring;
-    char* anoFormatura = cJSON_GetObjectItem(perfil, "ano de formatura")->valuestring;
-    char* habilidades = cJSON_GetObjectItem(perfil, "habilidades")->valuestring;
-    printf("Perfil %d:\n", index + 1);
-    printf("\tEmail: %s\n", email);
-    printf("\tNome completo: %s %s\n", nome, sobrenome);
-    printf("\tCidade: %s\n", cidade);
-    printf("\tFormação: %s\n", formacao);
-    printf("\tAno de formatura: %s\n", anoFormatura);
-    printf("\tHabilidades: %s\n", habilidades);
-}
-
 void registrarPerfil(char* nomeArquivo, char* perfilString) {
     // Abrir o arquivo JSON existente ou criar um novo arquivo se ele não existir
     FILE* arquivoJSON;
@@ -217,6 +200,7 @@ void removerPerfil(char* nomeArquivo, char* stringRequest) {
     cJSON_Delete(raiz);
 }
 
+// Função utilizada para chamar as operações e enviar informações para o cliente
 void callOperation(char* buffer, int socket) {
     cJSON* jsonRequest = cJSON_Parse(buffer);
     char* filtered_string;
@@ -267,14 +251,14 @@ void *handle_connection(void *arg) {
     int new_socket = *(int*)arg;
     char buffer[1024] = {0};
 
-    // Read data from client
+    // Lê mensagem do cliente
     int valread = recv(new_socket, buffer, 1024, 0);
     callOperation(buffer, new_socket);
 
-    // Close socket
+    // Fecha socket
     close(new_socket);
 
-    // Exit thread
+    // Sai da thread
     pthread_exit(NULL);
 }
 
@@ -283,50 +267,50 @@ int main(int argc, char const *argv[]) {
     struct sockaddr_in address;
     int addrlen = sizeof(address);
 
-    // Create socket file descriptor
+    // Cria socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket failed");
         exit(EXIT_FAILURE);
     }
 
-    // Set socket options
+    // Configura as opções de socket
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR , &opt, sizeof(opt))) {
         perror("setsockopt");
         exit(EXIT_FAILURE);
     }
 
-    // Set server address
+    // Configura as opções do server
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
 
-    // Bind socket to address
+    // Relaciona socket ao endereço
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
 
-    // Start listening for incoming connections
+    // Começa a escutar novas conexões
     if (listen(server_fd, 5) < 0) {
         perror("listen failed");
         exit(EXIT_FAILURE);
     }
 
     while (1) {
-        // Accept incoming connection
+        // Aceita conexões
         if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
             perror("accept failed");
             exit(EXIT_FAILURE);
         }
 
-        // Create new thread to handle connection
+        // Cria novas threads
         pthread_t thread;
         if (pthread_create(&thread, NULL, handle_connection, &new_socket) != 0) {
             perror("pthread_create");
             exit(EXIT_FAILURE);
         }
 
-        // Detach thread to free resources when it exits
+        // Libera o espaço da thread
         pthread_detach(thread);
     }
 

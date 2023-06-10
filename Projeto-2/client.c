@@ -9,6 +9,7 @@
 #include "settings.h"
 
 #define PORT 8080
+#define MAXLINE 1024
 
 const char *OPTIONS[] = {"Cadastrar perfil", "Buscar perfil por email", "Listar perfis por ano", "Listar perfis por habilidade", "Listar perfis por curso", "Listar todos os perfis", "Deletar perfil", "Sair"};
 
@@ -31,10 +32,15 @@ void printProfile(cJSON* perfil, int index) {
 }
 
 // funcao auxiliar que imprime uma lista de usuarios
-void printListProfiles(int sock, char* filtro) {
-    char buffer[1024] = {0};
+void printListProfiles(int sock, char* filtro, struct sockaddr_in server_address) {
+    char buffer[MAXLINE];
 
-    recv(sock, buffer, 1024, 0);
+    int n, len;
+
+    printf("Its here");
+    n = recvfrom(sock, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *)&server_address, &len);
+    buffer[n] = '\0';
+    printf("Server : %s\n", buffer);
     cJSON* userListJson = cJSON_Parse(buffer);
 
     printf("Perfis no arquivo:\n");
@@ -208,24 +214,27 @@ int chooseOperation(int sock) {
     // Cria um socket file descriptor
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         printf("\n Socket creation error \n");
-        return -1;
+        exit(EXIT_FAILURE);
     }
+
+    memset(&serv_addr, 0, sizeof(serv_addr));
 
     // Configura o endereco do server
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT);
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
 
     // Converte ip de string para binario
-    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
-        printf("\nInvalid address/ Address not supported \n");
-        return -1;
-    }
+    // if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
+    //     printf("\nInvalid address/ Address not supported \n");
+    //     return -1;
+    // }
 
     // Conecta no servidor
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        printf("\nConnection Failed \n");
-        return -1;
-    }
+    // if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+    //     printf("\nConnection Failed \n");
+    //     return -1;
+    // }
 
     printf("Conectado ao servidor\n");
     // Switch que ajuda na chamada das funcoes
@@ -249,7 +258,7 @@ int chooseOperation(int sock) {
         // Envia mensagem para o servidor
         printf("Sending message to server\n%s\n", emailSearch);
         send(sock, emailSearch, strlen(emailSearch), 0);
-        printListProfiles(sock, "");
+        printListProfiles(sock, "", serv_addr);
         break;
 
     case LISTAR_PERFIL_ANO:
@@ -259,7 +268,7 @@ int chooseOperation(int sock) {
         // Envia mensagem para o servidor
         printf("Sending message to server\n%s\n", filterAnoRequest);
         send(sock, filterAnoRequest, strlen(filterAnoRequest), 0);
-        printListProfiles(sock, "ano de formatura");
+        printListProfiles(sock, "ano de formatura", serv_addr);
         break;
 
     case LISTAR_PERFIL_HABILIDADE:
@@ -269,7 +278,7 @@ int chooseOperation(int sock) {
         // Envia mensagem para o servidor
         printf("Sending message to server\n%s\n", filterAbilitiesRequest);
         send(sock, filterAbilitiesRequest, strlen(filterAbilitiesRequest), 0);
-        printListProfiles(sock, "habilidades");
+        printListProfiles(sock, "habilidades", serv_addr);
         break;
 
     case LISTAR_PERFIL_CURSO:
@@ -279,7 +288,7 @@ int chooseOperation(int sock) {
         // Envia mensagem para o servidor
         printf("Sending message to server\n%s\n", filterRequest);
         send(sock, filterRequest, strlen(filterRequest), 0);
-        printListProfiles(sock, "formação");
+        printListProfiles(sock, "formação", serv_addr);
         break;
 
     case LISTAR_PERFIS_COMPLETO:
@@ -287,9 +296,11 @@ int chooseOperation(int sock) {
         
         // Envia mensagem para o servidor
         char* listing = listarPerfis();
-        printf("Requesting listing to server\n");
-        send(sock, listing, strlen(listing), 0);
-        printListProfiles(sock, "");
+        printf("Requesting LISTING to server\n");
+        sendto(sock, (const char *)listing, strlen(listing), 0, (const struct sockaddr*) &serv_addr, sizeof(serv_addr));
+        printf("Sent");
+        printListProfiles(sock, "", serv_addr);
+        printf("Sent prof");
         break;
     
     case DELETAR_PERFIL:
@@ -314,12 +325,14 @@ int chooseOperation(int sock) {
 }
 
 int main(int argc, char const *argv[]) {
-    int sock = 0;
+    int sock;
     int option = -1;
 
     // Roda ate o usuario escolher sair
     while(option != SAIR) {
         option = chooseOperation(sock);
+
+        close(sock);
     }
 
     return 0;

@@ -9,6 +9,7 @@
 #include "settings.h"
 
 #define PORT 8080
+#define MAXLINE 1024
 #define ARQUIVO "perfis.json"
 
 // Funcao auxiliar para abrir o .json
@@ -196,7 +197,7 @@ void removerPerfil(char* nomeArquivo, char* stringRequest) {
 }
 
 // Função utilizada para chamar as operações e enviar informações para o cliente
-void callOperation(char* buffer, int socket) {
+void callOperation(char* buffer, int socket, struct sockaddr* client_addr, socklen_t client_addr_len) {
     cJSON* jsonRequest = cJSON_Parse(buffer);
     char* filtered_string;
 
@@ -230,7 +231,8 @@ void callOperation(char* buffer, int socket) {
 
     case LISTAR_PERFIS_COMPLETO:
         filtered_string = listarPerfis(ARQUIVO);
-        send(socket, filtered_string, strlen(filtered_string), 0);
+        printf("Listagem completa!!!\n");
+        sendto(socket, (const char *)filtered_string, strlen(filtered_string), 0, (const struct sockaddr*)&client_addr, client_addr_len);
         break;
 
     case DELETAR_PERFIL:
@@ -238,51 +240,62 @@ void callOperation(char* buffer, int socket) {
         break;
     
     default:
+        printf("Operacao invalida\n");
         break;
     }
 }
 
-void *handle_connection(void *arg) {
-    int new_socket = *(int*)arg;
-    char buffer[1024] = {0};
+void handle_connection(int socket_fd) {
+    char buffer[MAXLINE];
+    struct sockaddr_in client_address;
+    int client_address_len = sizeof(client_address);
 
-    // Lê mensagem do cliente
-    recv(new_socket, buffer, 1024, 0);
-    callOperation(buffer, new_socket);
+    memset(&client_address, 0, sizeof(client_address));
 
-    // Fecha socket
-    close(new_socket);
+    int n;
+
+    printf("Chegamos para receber o cliente!!! \n");
+    n = recvfrom(socket_fd, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *)&client_address, &client_address_len);
+    buffer[n] = '\0';
+    printf("RECEBEMOS uhhul!!! \n");
+
+    // Processa a operação com base nos dados recebidos
+    callOperation(buffer, socket_fd, (struct sockaddr *)&client_address, client_address_len);
+
+    // Fecha o socket (se necessário)
+    close(socket_fd);
 }
 
 int main(int argc, char const *argv[]) {
-    int server_fd, new_socket, opt = 0;
-    struct sockaddr_in address;
-    int addrlen = sizeof(address);
+    while(1) {
+        int socket_fd;
+        struct sockaddr_in server_addess;
+        int addrlen = sizeof(server_addess);
 
-    // Cria socket file descriptor
-    if ((server_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        perror("Socket creation failed");
-        exit(EXIT_FAILURE);
-    }
+        // Cria socket file descriptor
+        if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+            perror("Socket creation failed");
+            exit(EXIT_FAILURE);
+        }
 
-    // Configura as opções de socket
-    memset(&address, 0, sizeof(address));
+        // Configura as opções de socket
+        memset(&server_addess, 0, sizeof(server_addess));
 
+        // Configura as opções do servidor
+        server_addess.sin_family = AF_INET;
+        server_addess.sin_addr.s_addr = INADDR_ANY;
+        server_addess.sin_port = htons(PORT);
 
-    // Configura as opções do server
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
+        printf("Relacionamento socket x endereco feito com sucesso!!! \n");
 
-    // Relaciona socket ao endereço
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        perror("bind failed");
-        exit(EXIT_FAILURE);
-    }
+        // Relaciona o socket ao endereço
+        if (bind(socket_fd, (const struct sockaddr *)&server_addess, sizeof(server_addess)) < 0) {
+            perror("bind failed");
+            exit(EXIT_FAILURE);
+        }
 
-    while (1) {
         // Gera conexão
-        handle_connection(&new_socket);
+        handle_connection(socket_fd);
     }
 
     return 0;

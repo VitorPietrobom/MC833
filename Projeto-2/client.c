@@ -11,7 +11,7 @@
 #define PORT 8080
 #define MAXLINE 1024
 
-const char *OPTIONS[] = {"Cadastrar perfil", "Buscar perfil por email", "Listar perfis por ano", "Listar perfis por habilidade", "Listar perfis por curso", "Listar todos os perfis", "Deletar perfil", "Sair"};
+const char *OPTIONS[] = {"Cadastrar perfil", "Buscar perfil por email", "Listar perfis por ano", "Listar perfis por habilidade", "Listar perfis por curso", "Listar todos os perfis", "Deletar perfil", "Baixar imagem", "Sair"};
 
 // Funcao auxiliar para imprimir um usuario
 void printProfile(cJSON* perfil, int index) {
@@ -35,16 +35,15 @@ void printProfile(cJSON* perfil, int index) {
 void printListProfiles(int sock, char* filtro, struct sockaddr_in server_address) {
     char buffer[MAXLINE];
 
-    int n, len;
+    int len;
 
-    printf("Its here");
-    n = recvfrom(sock, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *)&server_address, &len);
-    buffer[n] = '\0';
-    printf("Server : %s\n", buffer);
+    recvfrom(sock, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *)&server_address, &len);
     cJSON* userListJson = cJSON_Parse(buffer);
 
-    printf("Perfis no arquivo:\n");
+    printf("\n\n\n----------------------------- Resultado --------------------------------\n\n");
+
     int numPerfis = cJSON_GetArraySize(userListJson);
+    printf("Perfis no arquivo: %d\n\n", numPerfis);
     for (int i = 0; i < numPerfis; i++) {
         cJSON* perfil = cJSON_GetArrayItem(userListJson, i);
         printProfile(perfil, i);
@@ -196,6 +195,19 @@ char* removerPerfil() {
     return json_string;
 }
 
+// Funcao 8 - Prepara input para DOWNLOAD_IMAGEM
+char* downloadImagem() {
+    // Objeto JSON
+    cJSON *root = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(root, "operation", DOWNLOAD_IMAGEM);
+
+    // Converte o objeto JSON para uma string formatada
+    char *json_string = cJSON_Print(root);
+
+    return json_string;
+}
+
 
 // Funcao utilizada para preparar a escolha do cliente e enviar para o usuario
 int chooseOperation(int sock) {
@@ -205,17 +217,13 @@ int chooseOperation(int sock) {
 
     // Pega o ID da operacao
     printf("Que operação gostaria de realizar?\n");
-    for(int i = 0; i < 8; i++) {
+    for(int i = 0; i < 9; i++) {
         printf("%d. %s\n", i+1, OPTIONS[i]);
     }
 
     scanf("%[^\n]%*c", &input);
 
-    // Cria um socket file descriptor
-    if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        printf("\n Socket creation error \n");
-        exit(EXIT_FAILURE);
-    }
+    
 
     memset(&serv_addr, 0, sizeof(serv_addr));
 
@@ -224,19 +232,6 @@ int chooseOperation(int sock) {
     serv_addr.sin_port = htons(PORT);
     serv_addr.sin_addr.s_addr = INADDR_ANY;
 
-    // Converte ip de string para binario
-    // if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
-    //     printf("\nInvalid address/ Address not supported \n");
-    //     return -1;
-    // }
-
-    // Conecta no servidor
-    // if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    //     printf("\nConnection Failed \n");
-    //     return -1;
-    // }
-
-    printf("Conectado ao servidor\n");
     // Switch que ajuda na chamada das funcoes
     switch (atoi(input))
     {
@@ -246,8 +241,8 @@ int chooseOperation(int sock) {
 
         char* profile = cadastrarPerfil();
         // Envia mensagem para o servidor
-        printf("Sending message to server\n%s\n", profile);
-        send(sock, profile, strlen(profile), 0);
+        printf("Enviando pedido de cadastro para o servidor\n");
+        sendto(sock, (const char *)profile, strlen(profile), 0, (const struct sockaddr*) &serv_addr, sizeof(serv_addr));
         break;
     }
     
@@ -256,8 +251,8 @@ int chooseOperation(int sock) {
 
         char* emailSearch = buscarPerfil();
         // Envia mensagem para o servidor
-        printf("Sending message to server\n%s\n", emailSearch);
-        send(sock, emailSearch, strlen(emailSearch), 0);
+        printf("Enviando pedido de busca por email para o servidor\n");
+        sendto(sock, (const char *)emailSearch, strlen(emailSearch), 0, (const struct sockaddr*) &serv_addr, sizeof(serv_addr));
         printListProfiles(sock, "", serv_addr);
         break;
 
@@ -266,8 +261,8 @@ int chooseOperation(int sock) {
 
         char* filterAnoRequest = listarFiltradoAno();
         // Envia mensagem para o servidor
-        printf("Sending message to server\n%s\n", filterAnoRequest);
-        send(sock, filterAnoRequest, strlen(filterAnoRequest), 0);
+        printf("Enviando pedido de listagem por ano de formacao para o servidor\n");
+        sendto(sock, (const char *)filterAnoRequest, strlen(filterAnoRequest), 0, (const struct sockaddr*) &serv_addr, sizeof(serv_addr));
         printListProfiles(sock, "ano de formatura", serv_addr);
         break;
 
@@ -276,8 +271,8 @@ int chooseOperation(int sock) {
 
         char* filterAbilitiesRequest = listarFiltradoHabilidades();
         // Envia mensagem para o servidor
-        printf("Sending message to server\n%s\n", filterAbilitiesRequest);
-        send(sock, filterAbilitiesRequest, strlen(filterAbilitiesRequest), 0);
+        printf("Enviando pedido de listagem por habilidade para o servidor\n");
+        sendto(sock, (const char *)filterAbilitiesRequest, strlen(filterAbilitiesRequest), 0, (const struct sockaddr*) &serv_addr, sizeof(serv_addr));
         printListProfiles(sock, "habilidades", serv_addr);
         break;
 
@@ -286,8 +281,8 @@ int chooseOperation(int sock) {
 
         char* filterRequest = listarFiltradoCurso();
         // Envia mensagem para o servidor
-        printf("Sending message to server\n%s\n", filterRequest);
-        send(sock, filterRequest, strlen(filterRequest), 0);
+        printf("Enviando pedido de listagem por curso para o servidor\n");
+        sendto(sock, (const char *)filterRequest, strlen(filterRequest), 0, (const struct sockaddr*) &serv_addr, sizeof(serv_addr));
         printListProfiles(sock, "formação", serv_addr);
         break;
 
@@ -296,20 +291,27 @@ int chooseOperation(int sock) {
         
         // Envia mensagem para o servidor
         char* listing = listarPerfis();
-        printf("Requesting LISTING to server\n");
+        printf("Enviando pedido de listagem para o servidor\n");
         sendto(sock, (const char *)listing, strlen(listing), 0, (const struct sockaddr*) &serv_addr, sizeof(serv_addr));
-        printf("Sent");
         printListProfiles(sock, "", serv_addr);
-        printf("Sent prof");
         break;
     
     case DELETAR_PERFIL:
         option = DELETAR_PERFIL;
 
-        char* request = removerPerfil();
+        char* downloadRequest = removerPerfil();
         // Envia mensagem para o servidor
-        printf("Sending message to server\n%s\n", request);
-        send(sock, request, strlen(request), 0);
+        printf("Enviando pedido de remocao de usuario para o servidor\n");
+        sendto(sock, (const char *)downloadRequest, strlen(downloadRequest), 0, (const struct sockaddr*) &serv_addr, sizeof(serv_addr));
+        break;
+
+    case DOWNLOAD_IMAGEM:
+        option = DOWNLOAD_IMAGEM;
+
+        char* request = downloadImagem();
+        // Envia mensagem para o servidor
+        printf("Enviando pedido de download de imagem para o servidor\n");
+        sendto(sock, (const char *)request, strlen(request), 0, (const struct sockaddr*) &serv_addr, sizeof(serv_addr));
         break;
     
     case SAIR:
@@ -328,9 +330,20 @@ int main(int argc, char const *argv[]) {
     int sock;
     int option = -1;
 
+    
+
     // Roda ate o usuario escolher sair
     while(option != SAIR) {
+
+        // Cria um socket file descriptor
+        if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+            printf("\n Socket creation error \n");
+            exit(EXIT_FAILURE);
+        }
+
         option = chooseOperation(sock);
+
+        printf("\n\n\n\n\n\n\n");
 
         close(sock);
     }

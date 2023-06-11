@@ -211,32 +211,36 @@ void callOperation(char* buffer, int socket, struct sockaddr* client_addr, sockl
 
     case BUSCAR_PERFIL_EMAIL:
         filtered_string = buscarPerfil(ARQUIVO, buffer);
-        send(socket, filtered_string, strlen(filtered_string), 0);
+        sendto(socket, (const char *)filtered_string, strlen(filtered_string), 0, (const struct sockaddr*) client_addr, client_addr_len);
         break;
 
     case LISTAR_PERFIL_ANO:
         filtered_string = listarFiltrado(ARQUIVO, buffer, "ano de formatura");
-        send(socket, filtered_string, strlen(filtered_string), 0);
+        sendto(socket, (const char *)filtered_string, strlen(filtered_string), 0, (const struct sockaddr*) client_addr, client_addr_len);
         break;
 
     case LISTAR_PERFIL_CURSO:
         filtered_string = listarFiltrado(ARQUIVO, buffer, "formação");
-        send(socket, filtered_string, strlen(filtered_string), 0);
+        sendto(socket, (const char *)filtered_string, strlen(filtered_string), 0, (const struct sockaddr*) client_addr, client_addr_len);
         break;
 
     case LISTAR_PERFIL_HABILIDADE:
         filtered_string = listarFiltrado(ARQUIVO, buffer, "habilidades");
-        send(socket, filtered_string, strlen(filtered_string), 0);
+        sendto(socket, (const char *)filtered_string, strlen(filtered_string), 0, (const struct sockaddr*) client_addr, client_addr_len);
         break;
 
     case LISTAR_PERFIS_COMPLETO:
         filtered_string = listarPerfis(ARQUIVO);
-        printf("Listagem completa!!!\n");
-        sendto(socket, (const char *)filtered_string, strlen(filtered_string), 0, (const struct sockaddr*)&client_addr, client_addr_len);
+        sendto(socket, (const char *)filtered_string, strlen(filtered_string), 0, (const struct sockaddr*) client_addr, client_addr_len);
         break;
 
     case DELETAR_PERFIL:
         removerPerfil(ARQUIVO, buffer);
+        break;
+
+    case DOWNLOAD_IMAGEM:
+        filtered_string = "";
+        sendto(socket, (const char *)filtered_string, strlen(filtered_string), 0, (const struct sockaddr*) client_addr, client_addr_len);
         break;
     
     default:
@@ -248,16 +252,16 @@ void callOperation(char* buffer, int socket, struct sockaddr* client_addr, sockl
 void handle_connection(int socket_fd) {
     char buffer[MAXLINE];
     struct sockaddr_in client_address;
-    int client_address_len = sizeof(client_address);
+    
 
     memset(&client_address, 0, sizeof(client_address));
 
+    int client_address_len = sizeof(client_address);
+
     int n;
 
-    printf("Chegamos para receber o cliente!!! \n");
     n = recvfrom(socket_fd, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *)&client_address, &client_address_len);
     buffer[n] = '\0';
-    printf("RECEBEMOS uhhul!!! \n");
 
     // Processa a operação com base nos dados recebidos
     callOperation(buffer, socket_fd, (struct sockaddr *)&client_address, client_address_len);
@@ -285,8 +289,6 @@ int main(int argc, char const *argv[]) {
         server_addess.sin_family = AF_INET;
         server_addess.sin_addr.s_addr = INADDR_ANY;
         server_addess.sin_port = htons(PORT);
-
-        printf("Relacionamento socket x endereco feito com sucesso!!! \n");
 
         // Relaciona o socket ao endereço
         if (bind(socket_fd, (const struct sockaddr *)&server_addess, sizeof(server_addess)) < 0) {

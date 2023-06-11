@@ -10,6 +10,7 @@
 
 #define PORT 8080
 #define MAXLINE 1024
+#define CLIENT_FOLDER "clientFolder/"
 
 const char *OPTIONS[] = {"Cadastrar perfil", "Buscar perfil por email", "Listar perfis por ano", "Listar perfis por habilidade", "Listar perfis por curso", "Listar todos os perfis", "Deletar perfil", "Baixar imagem", "Sair"};
 
@@ -196,11 +197,19 @@ char* removerPerfil() {
 }
 
 // Funcao 8 - Prepara input para DOWNLOAD_IMAGEM
-char* downloadImagem() {
+char* requisitaImagem() {
     // Objeto JSON
     cJSON *root = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateObject();
 
+    cJSON_AddItemToObject(root, "data", data);
     cJSON_AddNumberToObject(root, "operation", DOWNLOAD_IMAGEM);
+
+    // Preencher requisição como o email
+    char input[100];
+    printf("Digite o email do usuario do qual gostria de baixar a imagem: ");
+    scanf("%[^\n]%*c", &input);
+    cJSON_AddStringToObject(data, "email", input);
 
     // Converte o objeto JSON para uma string formatada
     char *json_string = cJSON_Print(root);
@@ -308,10 +317,46 @@ int chooseOperation(int sock) {
     case DOWNLOAD_IMAGEM:
         option = DOWNLOAD_IMAGEM;
 
-        char* request = downloadImagem();
+        char* request = requisitaImagem();
         // Envia mensagem para o servidor
         printf("Enviando pedido de download de imagem para o servidor\n");
         sendto(sock, (const char *)request, strlen(request), 0, (const struct sockaddr*) &serv_addr, sizeof(serv_addr));
+
+        int len;
+
+        char imageBuffer[MAXLINE];
+        FILE *image_file;
+        
+        // Recebe o nome do arquivo
+        cJSON* jsonRequest = cJSON_Parse(request);
+        cJSON* data = cJSON_GetObjectItem(jsonRequest, "data");
+        char* email = cJSON_GetStringValue(cJSON_GetObjectItem(data, "email"));
+        char* fileName[1000];
+
+        strcat(fileName, CLIENT_FOLDER);
+        strcat(fileName, email);
+        strcat(fileName, ".png");
+
+        // Abre o arquivo para escrever a imagem recebida
+        image_file = fopen(fileName, "wb");
+        if (image_file == NULL) {
+            perror("Erro ao criar arquivo de imagem");
+            exit(1);
+        }
+
+        int bytes_received = MAXLINE;
+        
+        // Recebe a imagem em pacotes de MAXLINE bytes
+        while (bytes_received == MAXLINE) {
+            bytes_received = recvfrom(sock, imageBuffer, sizeof(imageBuffer), 0, NULL, NULL);
+            fwrite(imageBuffer, 1, bytes_received, image_file);
+        }
+
+        printf("Imagem recebida com sucesso\n");
+        
+        // Fecha o arquivo
+        fclose(image_file);
+
         break;
     
     case SAIR:
@@ -329,8 +374,6 @@ int chooseOperation(int sock) {
 int main(int argc, char const *argv[]) {
     int sock;
     int option = -1;
-
-    
 
     // Roda ate o usuario escolher sair
     while(option != SAIR) {

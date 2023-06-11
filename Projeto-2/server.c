@@ -11,6 +11,8 @@
 #define PORT 8080
 #define MAXLINE 1024
 #define ARQUIVO "perfis.json"
+#define PROFILE_PICTURE "profilePictures/imagem_perfil.png"
+#define PROFILE_PICTURE_FOLDER "profilePictures/"
 
 // Funcao auxiliar para abrir o .json
 void openFile(char* nomeArquivo, FILE** arquivoJSON, cJSON** raiz) {
@@ -28,6 +30,43 @@ void openFile(char* nomeArquivo, FILE** arquivoJSON, cJSON** raiz) {
         *raiz = cJSON_Parse(conteudoArquivo);
         free(conteudoArquivo);
     }
+}
+
+char* getNomeImagemDePerfil(char* email) {
+    char* emailString[1000];
+
+    strcpy(emailString, PROFILE_PICTURE_FOLDER);
+    strcat(emailString, email);
+    strcat(emailString, ".png");
+
+    printf("Email string: %s\n", emailString);
+
+    return emailString;
+}
+
+void copiarImagem(char* email) {
+    printf("Copiando imagem de perfil...\n");
+    FILE *source, *target;
+    int i;
+    source = fopen(PROFILE_PICTURE, "rb"); 
+
+    fseek(source, 0, SEEK_END);
+    int length = ftell(source);
+
+    fseek(source, 0, SEEK_SET);
+    char* nomeImagem = getNomeImagemDePerfil(email);
+    printf("Nome da imagem: %s\n", nomeImagem);
+    target = fopen(nomeImagem, "wb");
+
+    if( target == NULL ) { fclose(source); }
+
+    for(i = 0; i < length; i++){
+        fputc(fgetc(source), target);
+    }
+
+    fclose(source); 
+    fclose(target);
+    printf("Imagem de perfil copiada.\n");
 }
 
 void registrarPerfil(char* nomeArquivo, char* perfilString) {
@@ -59,6 +98,9 @@ void registrarPerfil(char* nomeArquivo, char* perfilString) {
             }
         }
     }
+
+    // Create profile picture
+    copiarImagem(cJSON_GetStringValue(cJSON_GetObjectItem(perfil, "email")));
 
     // Salvar o objeto JSON atualizado no arquivo
     arquivoJSON = fopen(nomeArquivo, "wb");
@@ -196,6 +238,37 @@ void removerPerfil(char* nomeArquivo, char* stringRequest) {
     cJSON_Delete(raiz);
 }
 
+
+char* enviarImagem(char* nomeArquivo, char* stringRequest, struct sockaddr *client_address, int socket) {
+    char buffer[MAXLINE];
+    int bytes_read, bytes_sent;
+
+    cJSON* jsonRequest = cJSON_Parse(stringRequest);
+    cJSON* data = cJSON_GetObjectItem(jsonRequest, "data");
+    char* email = cJSON_GetStringValue(cJSON_GetObjectItem(data, "email"));
+
+    FILE* file = fopen(getNomeImagemDePerfil(email), "rb");
+    if (file == NULL) {
+        printf("Erro ao abrir o arquivo");
+        return -1;
+    }
+
+    // Envia o arquivo de imagem para o cliente por pacotes
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+        bytes_sent = sendto(socket, buffer, bytes_read, 0, (struct sockaddr *)client_address, sizeof(*client_address));
+        if (bytes_sent < 0) {
+            perror("Erro ao enviar pacote");
+            exit(1);
+        }
+    }
+
+    // Reinicia o ponteiro do arquivo para o início
+    fseek(file, 0, SEEK_SET);
+
+    // Fecha arquivo de imagem
+    fclose(file);
+}
+
 // Função utilizada para chamar as operações e enviar informações para o cliente
 void callOperation(char* buffer, int socket, struct sockaddr* client_addr, socklen_t client_addr_len) {
     cJSON* jsonRequest = cJSON_Parse(buffer);
@@ -239,8 +312,8 @@ void callOperation(char* buffer, int socket, struct sockaddr* client_addr, sockl
         break;
 
     case DOWNLOAD_IMAGEM:
-        filtered_string = "";
-        sendto(socket, (const char *)filtered_string, strlen(filtered_string), 0, (const struct sockaddr*) client_addr, client_addr_len);
+        printf("Chegando 0\n");
+        filtered_string = enviarImagem(ARQUIVO, buffer, client_addr, socket);
         break;
     
     default:
